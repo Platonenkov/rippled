@@ -1,0 +1,48 @@
+//
+// codec_revisions.macro — the SINGLE registration point for codec
+// REVISIONS (the "contract-declared codec revision -> per-type wire version"
+// pinning). Included multiple times with different macro definitions, so NO
+// include guard.
+//
+// A revision fixes, for every type, which wire version a contract that declared
+// that revision receives. It is deliberately SEPARATE from the (type, version)
+// registry: adding a codec version does not change any revision — bumping a
+// revision is its own act, tied to the amendment that enables it.
+//
+//   CODEC_REVISION_BEGIN(Revision)
+//   CODEC_REVISION_ENTRY(CppType, Version)   // repeated, one per type
+//   CODEC_REVISION_END(Revision)
+//
+// HOW TO ADD A REVISION (e.g. revision 1 that emits the widened Number v1):
+//    1. Add a block here:
+//         CODEC_REVISION_BEGIN(1)
+//             CODEC_REVISION_ENTRY(Number,    1)   // widened
+//             CODEC_REVISION_ENTRY(AccountID, 0)   // unchanged
+//         CODEC_REVISION_END(1)
+//    2. Gate it behind its amendment in CodecRevisions.cpp (see the
+//       amendment-gating TODO in wireVersionFor).
+//    Both CodecTrait<1> and the wireVersionFor switch case regenerate from this.
+//
+
+#ifndef CODEC_REVISION_BEGIN
+#define CODEC_REVISION_BEGIN(Revision)
+#endif
+#ifndef CODEC_REVISION_ENTRY
+#define CODEC_REVISION_ENTRY(CppType, Version)
+#endif
+#ifndef CODEC_REVISION_END
+#define CODEC_REVISION_END(Revision)
+#endif
+
+// clang-format off
+
+CODEC_REVISION_BEGIN(0)
+    CODEC_REVISION_ENTRY(Number,     0)
+    CODEC_REVISION_ENTRY(AccountID,  0)
+CODEC_REVISION_END(0)
+
+// clang-format on
+
+#undef CODEC_REVISION_BEGIN
+#undef CODEC_REVISION_ENTRY
+#undef CODEC_REVISION_END

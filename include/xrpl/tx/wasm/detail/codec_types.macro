@@ -1,0 +1,58 @@
+//
+// codec_types.macro — the SINGLE registration point for wasm codecs.
+//
+// This file is #included multiple times with different macro definitions, so
+// it has NO include guard. Every codec is declared here exactly once, on two
+// axes, and everything else (the trait tuple, the dispatch tables, the
+// explicit instantiations, the type-code map) is generated from it — so those
+// can never drift apart.
+//
+//   CODEC_TYPE(CppType, TypeCode)
+//       Once per C++ type. Assigns its stable 16-bit wire type code. Drives the
+//       type-code map and the per-type explicit instantiations of decode/encode.
+//
+//   CODEC_VERSION(CppType, Version, PayloadSize)
+//       Once per (type, version). Declares a CodecTypeTrait specialization and
+//       adds it to the registered-codec tuple. Versions per type MUST be
+//       contiguous from 0 (enforced at compile time).
+//
+// HOW TO ADD A CODEC
+//
+// A) A new VERSION of an existing type (e.g. widen Number):
+//    1. Add a line here:            CODEC_VERSION(Number, 1, 20)
+//    2. Define its bodies in the type's .cpp (codecs/NumberCodec.cpp):
+//         CodecTypeTrait<codecTypeCodeV<Number>, 1>::decode/encode
+//    3. If a codec revision should emit it, add an entry in
+//       codec_revisions.macro.
+//    (Versions must stay contiguous from 0, or the build fails.)
+//
+// B) A brand-new TYPE (e.g. STAmount):
+//    1. CODEC_TYPE(STAmount, 0x0003)  and  CODEC_VERSION(STAmount, 0, N) here.
+//    2. Add its C++ header include to codecs/CodecTypes.h.
+//    3. Create codecs/STAmountCodec.cpp with the decode/encode bodies.
+//       (GLOB_RECURSE picks up the new .cpp automatically — no CMake edit.)
+//    4. Add a CODEC_REVISION_ENTRY(STAmount, 0) to each relevant revision
+//       block in codec_revisions.macro.
+//
+
+#ifndef CODEC_TYPE
+#define CODEC_TYPE(CppType, TypeCode)
+#endif
+#ifndef CODEC_VERSION
+#define CODEC_VERSION(CppType, Version, PayloadSize)
+#endif
+
+// clang-format off
+
+//         C++ type    wire type code
+CODEC_TYPE(Number,     0x0001)
+CODEC_TYPE(AccountID,  0x0002)
+
+//            C++ type    version  payload bytes
+CODEC_VERSION(Number,     0,       12)   // int64 mantissa + int32 exponent
+CODEC_VERSION(AccountID,  0,       20)   // 20 raw bytes
+
+// clang-format on
+
+#undef CODEC_TYPE
+#undef CODEC_VERSION
