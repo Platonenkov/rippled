@@ -17,6 +17,7 @@
 #include <xrpl/ledger/Ledger.h>
 #include <xrpl/nodestore/Database.h>
 #include <xrpl/nodestore/Manager.h>
+#include <xrpl/nodestore/NodeObject.h>
 #include <xrpl/nodestore/Scheduler.h>
 #include <xrpl/nodestore/detail/DatabaseRotatingImp.h>
 #include <xrpl/protocol/Protocol.h>
@@ -266,6 +267,26 @@ SHAMapStoreImp::copyNode(std::uint64_t& nodeCount, SHAMapTreeNode const& node)
     // Copy a single record from node to dbRotating_
     dbRotating_->fetchNodeObject(
         node.getHash().asUInt256(), 0, NodeStore::FetchType::Synchronous, true);
+    if (!obj)
+    {
+        // Reachable from the validated state map in memory, but present in
+        // neither backend: its only on-disk copy lived in a backend removed by
+        // an earlier rotation, and it was never rewritten because it is clean
+        // (cowid == 0, so flushDirty skips it). Persist the in-memory body
+        // directly into the writable backend so it survives this rotation
+        // instead of later surfacing as an unresolvable SHAMapMissingNode.
+        auto const hash = node.getHash().asUInt256();
+        Serializer s;
+        node.serializeWithPrefix(s);
+        dbRotating_->store(NodeObjectType::AccountNode, std::move(s.modData()), hash, 0);
+        {
+            auto const& cached = treeNodeCache_->fetch(hash);
+            JLOG(journal_.warn()) << "copyNode: re-stored node missing from both backends, hash="
+                                  << hash << " type=" << static_cast<int>(node.getType())
+                                  << ". Node is " << (cached ? "" : "not ")
+                                  << "in the tree node cache";
+        }
+    }
     if ((++nodeCount % checkHealthInterval_) == 0u)
     {
         if (healthWait() == HealthResult::Stopping)
@@ -666,7 +687,6 @@ SHAMapStoreImp::healthWait()
         numMissing =
             lowerBound == 0 ? 0 : ledgerMaster_->missingFromCompleteLedgerRange(lowerBound, index);
     };
-
     // Tracked server status properties
     LedgerIndex index = 0;
     std::chrono::seconds age;
@@ -685,7 +705,24 @@ SHAMapStoreImp::healthWait()
 
         readServerStatus(index, age, mode, numMissing, lowerBound, unlock);
     }
-    while (!stop_ && (mode != OperatingMode::FULL || age > ageThreshold || numMissing > 0))
+
+    auto healthy = [&]() {
+        // Special case: If the server is disconnected, it's not doing any ledger I/O, because
+        // it's focused on trying to get peers. A disconnected state is should never be caused by
+        // the activity of the server. It's usually limited to hardware or connectivity issues. Take
+        // advantage of that to run as much rotation I/O as possible before it comes back online.
+        if (mode == OperatingMode::DISCONNECTED)
+            return true;
+        if (age > ageThreshold)
+            return false;
+        if (numMissing > 0)
+            return false;
+        if (mode != OperatingMode::FULL)
+            return false;
+        return true;
+    };
+
+    while (!stop_ && !healthy())
     {
         // this value shouldn't change, so grab it while we have the
         // lock
