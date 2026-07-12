@@ -272,7 +272,7 @@ SHAMap::fetchNode(SHAMapHash const& hash) const
     auto node = fetchNodeNT(hash);
 
     if (!node)
-        Throw<SHAMapMissingNode>(type_, hash);
+        Throw<SHAMapMissingNode>(type_, hash, "fetchNode");
 
     return node;
 }
@@ -283,7 +283,7 @@ SHAMap::descendThrow(SHAMapInnerNode* parent, int branch) const
     SHAMapTreeNode* ret = descend(parent, branch);  // NOLINT(misc-const-correctness)
 
     if ((ret == nullptr) && !parent->isEmptyBranch(branch))
-        Throw<SHAMapMissingNode>(type_, parent->getChildHash(branch));
+        Throw<SHAMapMissingNode>(type_, parent->getChildHash(branch), "descendThrow");
 
     return ret;
 }
@@ -294,7 +294,7 @@ SHAMap::descendThrow(SHAMapInnerNode& parent, int branch) const
     SHAMapTreeNodePtr ret = descend(parent, branch);
 
     if (!ret && !parent.isEmptyBranch(branch))
-        Throw<SHAMapMissingNode>(type_, parent.getChildHash(branch));
+        Throw<SHAMapMissingNode>(type_, parent.getChildHash(branch), "descendThrow");
 
     return ret;
 }
@@ -566,7 +566,7 @@ SHAMap::peekNextItem(uint256 const& id, SharedPtrNodeStack& stack) const
                 node = descendThrow(*inner, i);
                 auto leaf = firstBelow(node, stack, i);
                 if (leaf == nullptr)
-                    Throw<SHAMapMissingNode>(type_, id);
+                    Throw<SHAMapMissingNode>(type_, id, "peekNextItem");
                 XRPL_ASSERT(leaf->isLeaf(), "xrpl::SHAMap::peekNextItem : leaf is valid");
                 return leaf;
             }
@@ -624,7 +624,7 @@ SHAMap::upperBound(uint256 const& id) const
                     node = descendThrow(*inner, branch);
                     auto leaf = firstBelow(node, stack, branch);
                     if (leaf == nullptr)
-                        Throw<SHAMapMissingNode>(type_, id);
+                        Throw<SHAMapMissingNode>(type_, id, "upperBound");
                     return ConstIterator(this, leaf->peekItem().get(), std::move(stack));
                 }
             }
@@ -657,7 +657,7 @@ SHAMap::lowerBound(uint256 const& id) const
                     node = descendThrow(*inner, branch);
                     auto leaf = lastBelow(node, stack, branch);
                     if (leaf == nullptr)
-                        Throw<SHAMapMissingNode>(type_, id);
+                        Throw<SHAMapMissingNode>(type_, id, "lowerBound");
                     return ConstIterator(this, leaf->peekItem().get(), std::move(stack));
                 }
             }
@@ -684,7 +684,7 @@ SHAMap::delItem(uint256 const& id)
     walkTowardsKey(id, &stack);
 
     if (stack.empty())
-        Throw<SHAMapMissingNode>(type_, id);
+        Throw<SHAMapMissingNode>(type_, id, "delItem");
 
     auto leaf = intr_ptr::dynamicPointerCast<SHAMapLeafNode>(stack.top().first);
     stack.pop();
@@ -770,7 +770,7 @@ SHAMap::addGiveItem(SHAMapNodeType type, boost::intrusive_ptr<SHAMapItem const> 
     walkTowardsKey(tag, &stack);
 
     if (stack.empty())
-        Throw<SHAMapMissingNode>(type_, tag);
+        Throw<SHAMapMissingNode>(type_, tag, "addGiveItem");
 
     auto [node, nodeID] = stack.top();
     stack.pop();
@@ -857,7 +857,7 @@ SHAMap::updateGiveItem(SHAMapNodeType type, boost::intrusive_ptr<SHAMapItem cons
     walkTowardsKey(tag, &stack);
 
     if (stack.empty())
-        Throw<SHAMapMissingNode>(type_, tag);
+        Throw<SHAMapMissingNode>(type_, tag, "updateGiveItem");
 
     auto node = intr_ptr::dynamicPointerCast<SHAMapLeafNode>(stack.top().first);
     auto nodeID = stack.top().second;

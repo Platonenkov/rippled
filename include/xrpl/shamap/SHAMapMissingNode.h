@@ -35,13 +35,15 @@ to_string(SHAMapType t)
 class SHAMapMissingNode : public std::runtime_error
 {
 public:
-    SHAMapMissingNode(SHAMapType t, SHAMapHash const& hash)
-        : std::runtime_error("Missing Node: " + to_string(t) + ": hash " + to_string(hash))
+    SHAMapMissingNode(SHAMapType t, SHAMapHash const& hash, std::string const& location)
+        : std::runtime_error(
+              "Missing Node: " + to_string(t) + ": hash " + to_string(hash) + " in: " + location)
     {
     }
 
-    SHAMapMissingNode(SHAMapType t, uint256 const& id)
-        : std::runtime_error("Missing Node: " + to_string(t) + ": id " + to_string(id))
+    SHAMapMissingNode(SHAMapType t, uint256 const& id, std::string const& location)
+        : std::runtime_error(
+              "Missing Node: " + to_string(t) + ": id " + to_string(id) + " in: " + location)
     {
     }
 };

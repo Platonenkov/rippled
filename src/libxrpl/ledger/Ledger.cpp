@@ -746,7 +746,8 @@ Ledger::walkLedger(beast::Journal j, bool parallel) const
     if (stateMap_.getHash().isZero() && !header_.accountHash.isZero() &&
         !stateMap_.fetchRoot(SHAMapHash{header_.accountHash}, nullptr))
     {
-        missingNodes1.emplace_back(SHAMapType::STATE, SHAMapHash{header_.accountHash});
+        missingNodes1.emplace_back(
+            SHAMapType::STATE, SHAMapHash{header_.accountHash}, "Ledger::walkLedger");
     }
     else
     {
@@ -770,7 +771,8 @@ Ledger::walkLedger(beast::Journal j, bool parallel) const
     if (txMap_.getHash().isZero() && header_.txHash.isNonZero() &&
         !txMap_.fetchRoot(SHAMapHash{header_.txHash}, nullptr))
     {
-        missingNodes2.emplace_back(SHAMapType::TRANSACTION, SHAMapHash{header_.txHash});
+        missingNodes2.emplace_back(
+            SHAMapType::TRANSACTION, SHAMapHash{header_.txHash}, "Ledger::walkLedger");
     }
     else
     {

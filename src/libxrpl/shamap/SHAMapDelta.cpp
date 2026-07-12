@@ -153,7 +153,7 @@ SHAMap::compare(SHAMap const& otherMap, Delta& differences, int maxCount) const
         {
             // LCOV_EXCL_START
             UNREACHABLE("xrpl::SHAMap::compare : missing a node");
-            Throw<SHAMapMissingNode>(type_, uint256());
+            Throw<SHAMapMissingNode>(type_, uint256(), "compare");
             // LCOV_EXCL_STOP
         }
 
@@ -270,7 +270,7 @@ SHAMap::walkMap(std::vector<SHAMapMissingNode>& missingNodes, int maxMissing) co
                 }
                 else
                 {
-                    missingNodes.emplace_back(type_, node->getChildHash(i));
+                    missingNodes.emplace_back(type_, node->getChildHash(i), "walkMap");
                     if (--maxMissing <= 0)
                         return;
                 }
@@ -344,7 +344,8 @@ SHAMap::walkMapParallel(std::vector<SHAMapMissingNode>& missingNodes, int maxMis
                             else
                             {
                                 std::scoped_lock const l{m};
-                                missingNodes.emplace_back(type_, node->getChildHash(i));
+                                missingNodes.emplace_back(
+                                    type_, node->getChildHash(i), "walkMapParallel");
                                 if (--maxMissing <= 0)
                                     return;
                             }
