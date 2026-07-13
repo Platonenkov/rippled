@@ -27,6 +27,7 @@
 #include <xrpl/protocol/STParsedJSON.h>
 #include <xrpl/protocol/Serializer.h>
 #include <xrpl/protocol/TER.h>
+#include <xrpl/protocol/TxFlags.h>
 #include <xrpl/protocol/TxFormats.h>
 #include <xrpl/protocol/jss.h>
 #include <xrpl/resource/Fees.h>
@@ -77,7 +78,7 @@ getAutofillSequence(json::Value const& txJson, RPC::JsonContext& context)
 }
 
 static std::optional<json::Value>
-autofillSignature(json::Value& sigObject)
+autofillSignature(json::Value& sigObject, std::string const& fieldPrefix = "tx")
 {
     if (!sigObject.isMember(jss::SigningPubKey))
     {
@@ -88,14 +89,17 @@ autofillSignature(json::Value& sigObject)
     if (sigObject.isMember(jss::Signers))
     {
         if (!sigObject[jss::Signers].isArray())
-            return RPC::invalidFieldError("tx.Signers");
+            return RPC::invalidFieldError(fieldPrefix + ".Signers");
         // check multisigned signers
         for (unsigned index = 0; index < sigObject[jss::Signers].size(); index++)
         {
             auto& signer = sigObject[jss::Signers][index];
             if (!signer.isObject() || !signer.isMember(jss::Signer) ||
                 !signer[jss::Signer].isObject())
-                return RPC::invalidFieldError("tx.Signers[" + std::to_string(index) + "]");
+            {
+                return RPC::invalidFieldError(
+                    fieldPrefix + ".Signers[" + std::to_string(index) + "]");
+            }
 
             if (!signer[jss::Signer].isMember(jss::SigningPubKey))
             {
@@ -132,25 +136,18 @@ autofillSignature(json::Value& sigObject)
 static std::optional<json::Value>
 autofillTx(json::Value& txJson, RPC::JsonContext& context)
 {
-    if (!txJson.isMember(jss::Fee))
-    {
-        // autofill Fee
-        // Must happen after all the other autofills happen
-        // Error handling/messaging works better that way
-        auto feeOrError = RPC::getCurrentNetworkFee(
-            context.role,
-            context.app.config(),
-            context.app.getFeeTrack(),
-            context.app.getTxQ(),
-            context.app,
-            txJson);
-        if (feeOrError.isMember(jss::error))
-            return feeOrError;
-        txJson[jss::Fee] = feeOrError;
-    }
-
     if (auto error = autofillSignature(txJson))
         return error;
+
+    if (txJson.isMember(sfSponsorSignature.jsonName))
+    {
+        auto& sponsorSignature = txJson[sfSponsorSignature.jsonName];
+        if (!sponsorSignature.isObject())
+            return RPC::objectFieldError(sfSponsorSignature.jsonName);
+
+        if (auto const error = autofillSignature(sponsorSignature, "tx.SponsorSignature"))
+            return error;
+    }
 
     if (!txJson.isMember(jss::Sequence))
     {
@@ -165,6 +162,22 @@ autofillTx(json::Value& txJson, RPC::JsonContext& context)
         auto const networkId = context.app.getNetworkIDService().getNetworkID();
         if (networkId > 1024)
             txJson[jss::NetworkID] = to_string(networkId);
+    }
+
+    if (!txJson.isMember(jss::Fee))
+    {
+        // Autofill Fee after normalizing nested signer fields so the fee
+        // estimator sees the full transaction shape.
+        auto feeOrError = RPC::getCurrentNetworkFee(
+            context.role,
+            context.app.config(),
+            context.app.getFeeTrack(),
+            context.app.getTxQ(),
+            context.app,
+            txJson);
+        if (feeOrError.isMember(jss::error))
+            return feeOrError;
+        txJson[jss::Fee] = feeOrError;
     }
 
     return std::nullopt;
@@ -350,6 +363,13 @@ doSimulate(RPC::JsonContext& context)
     if (stTx->getTxnType() == ttBATCH)
     {
         return RPC::makeError(RpcNotImpl);
+    }
+
+    // Reject transactions with the tfInnerBatchTxn flag.
+    if (stTx->isFlag(tfInnerBatchTxn))
+    {
+        return RPC::makeError(
+            RpcInvalidParams, "tfInnerBatchTxn flag is not allowed on top-level transactions.");
     }
 
     std::string reason;

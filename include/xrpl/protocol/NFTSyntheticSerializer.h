@@ -9,10 +9,9 @@
 namespace xrpl::RPC {
 
 /**
-   Adds common synthetic fields to transaction metadata JSON
-
-   @{
+ * Adds common synthetic fields to transaction-related JSON responses
  */
+/** @{ */
 void
 insertNFTSyntheticInJson(json::Value&, std::shared_ptr<STTx const> const&, TxMeta const&);
 /** @} */
