@@ -356,9 +356,10 @@ SHAMapStoreImp::run()
         // will delete up to (not including) lastRotated
         if (readyToRotate)
         {
+            auto const diff = validatedSeq - lastRotated;
             JLOG(journal_.warn()) << "rotating  validatedSeq " << validatedSeq << " lastRotated "
-                                  << lastRotated << " deleteInterval " << deleteInterval_
-                                  << " canDelete_ " << canDelete_ << " state "
+                                  << lastRotated << " diff " << diff << " deleteInterval "
+                                  << deleteInterval_ << " canDelete_ " << canDelete_ << " state "
                                   << app_.getOPs().strOperatingMode(false) << " age "
                                   << ledgerMaster_->getValidatedLedgerAge().count()
                                   << "s. Complete ledgers: " << ledgerMaster_->getCompleteLedgers();
@@ -419,9 +420,14 @@ SHAMapStoreImp::run()
                     clearCaches(validatedSeq);
                 });
 
-            JLOG(journal_.warn()) << "finished rotation. validatedSeq: " << validatedSeq
-                                  << ", lastRotated: " << lastRotated
-                                  << ". Complete ledgers: " << ledgerMaster_->getCompleteLedgers();
+            auto const currentValidatedSeq = ledgerMaster_->getValidLedgerIndex();
+            auto const processingDiff = currentValidatedSeq - validatedSeq;
+            JLOG(journal_.warn())
+                << "finished rotation. validatedSeq: " << validatedSeq
+                << ", lastRotated: " << lastRotated << " diff " << diff
+                << ". Updated validated seq is " << currentValidatedSeq << ", " << processingDiff
+                << " ledgers were validated during the rotation processs. Complete ledgers: "
+                << ledgerMaster_->getCompleteLedgers();
         }
     }
 }
