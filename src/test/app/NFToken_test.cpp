@@ -6121,8 +6121,8 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             env.close();
 
             // Test 1: Check tx RPC response
-            Json::Value const txResult = env.rpc("tx", txHash)[jss::result];
-            Json::Value const& txMeta = txResult[jss::meta];
+            json::Value const txResult = env.rpc("tx", txHash)[jss::result];
+            json::Value const& txMeta = txResult[jss::meta];
 
             // Expect nftoken_id field
             if (!BEAST_EXPECT(txMeta.isMember(jss::nftoken_id)))
@@ -6137,7 +6137,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             auto const ledgerSeq = txResult[jss::ledger_index].asUInt();
 
             // Test 2: Check ledger RPC response with expanded transactions
-            Json::Value ledgerParams;
+            json::Value ledgerParams;
             ledgerParams[jss::ledger_index] = ledgerSeq;
             ledgerParams[jss::transactions] = true;
             ledgerParams[jss::expand] = true;
@@ -6150,7 +6150,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
 
             // Check synthetic fields in ledger response (this tests our
             // LedgerToJson.cpp fix)
-            Json::Value const* meta = nullptr;
+            json::Value const* meta = nullptr;
             if (tx.isMember(jss::meta))
                 meta = &tx[jss::meta];
             else if (tx.isMember(jss::metaData))
@@ -6168,7 +6168,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             }
 
             // Test 3: Check account_tx RPC response
-            Json::Value accountTxParams;
+            json::Value accountTxParams;
             accountTxParams[jss::account] = alice.human();
             accountTxParams[jss::limit] = 1;
 
@@ -6183,7 +6183,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             if (isOurTransaction)
             {
                 // Check synthetic fields in account_tx response
-                Json::Value const* accountMeta = nullptr;
+                json::Value const* accountMeta = nullptr;
                 if (accountTx.isMember(jss::meta))
                     accountMeta = &accountTx[jss::meta];
                 else if (accountTx.isMember(jss::metaData))
@@ -6213,8 +6213,8 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             env.close();
 
             // Test 1: Check tx RPC response
-            Json::Value const txResult = env.rpc("tx", txHash)[jss::result];
-            Json::Value const& txMeta = txResult[jss::meta];
+            json::Value const txResult = env.rpc("tx", txHash)[jss::result];
+            json::Value const& txMeta = txResult[jss::meta];
 
             // Expect nftokens_ids field and verify the values
             if (!BEAST_EXPECT(txMeta.isMember(jss::nftoken_ids)))
@@ -6248,7 +6248,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             auto const ledgerSeq = txResult[jss::ledger_index].asUInt();
 
             // Test 2: Check ledger RPC response with expanded transactions
-            Json::Value ledgerParams;
+            json::Value ledgerParams;
             ledgerParams[jss::ledger_index] = ledgerSeq;
             ledgerParams[jss::transactions] = true;
             ledgerParams[jss::expand] = true;
@@ -6260,7 +6260,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             BEAST_EXPECT(tx[jss::hash].asString() == txHash);
 
             // Check synthetic fields in ledger response
-            Json::Value const* meta = nullptr;
+            json::Value const* meta = nullptr;
             if (tx.isMember(jss::meta))
                 meta = &tx[jss::meta];
             else if (tx.isMember(jss::metaData))
@@ -6277,7 +6277,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
                         (*meta)[jss::nftoken_ids].begin(),
                         (*meta)[jss::nftoken_ids].end(),
                         std::back_inserter(ledgerMetaIDs),
-                        [this](Json::Value id) {
+                        [this](json::Value id) {
                             uint256 nftID;
                             BEAST_EXPECT(nftID.parseHex(id.asString()));
                             return nftID;
@@ -6291,7 +6291,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             }
 
             // Test 3: Check account_tx RPC response
-            Json::Value accountTxParams;
+            json::Value accountTxParams;
             accountTxParams[jss::account] = alice.human();
             accountTxParams[jss::limit] = 1;
 
@@ -6306,7 +6306,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
             if (isOurTransaction)
             {
                 // Check synthetic fields in account_tx response
-                Json::Value const* accountMeta = nullptr;
+                json::Value const* accountMeta = nullptr;
                 if (accountTx.isMember(jss::meta))
                     accountMeta = &accountTx[jss::meta];
                 else if (accountTx.isMember(jss::metaData))
@@ -6323,7 +6323,7 @@ class NFTokenBaseUtil_test : public beast::unit_test::Suite
                             (*accountMeta)[jss::nftoken_ids].begin(),
                             (*accountMeta)[jss::nftoken_ids].end(),
                             std::back_inserter(accountMetaIDs),
-                            [this](Json::Value id) {
+                            [this](json::Value id) {
                                 uint256 nftID;
                                 BEAST_EXPECT(nftID.parseHex(id.asString()));
                                 return nftID;

@@ -11,7 +11,7 @@ namespace RPC {
 
 void
 insertAllSyntheticInJson(
-    Json::Value& metadata,
+    json::Value& metadata,
     ReadView const& ledger,
     std::shared_ptr<STTx const> const& transaction,
     TxMeta const& transactionMeta)
@@ -23,7 +23,7 @@ insertAllSyntheticInJson(
 
 void
 insertAllSyntheticInJson(
-    Json::Value& metadata,
+    json::Value& metadata,
     JsonContext const& context,
     std::shared_ptr<STTx const> const& transaction,
     TxMeta const& transactionMeta)
