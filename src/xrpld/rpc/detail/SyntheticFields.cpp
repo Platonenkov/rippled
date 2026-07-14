@@ -1,6 +1,7 @@
+#include <xrpld/rpc/detail/SyntheticFields.h>
+
 #include <xrpld/rpc/DeliveredAmount.h>
 #include <xrpld/rpc/MPTokenIssuanceID.h>
-#include <xrpld/rpc/detail/SyntheticFields.h>
 
 #include <xrpl/json/json_value.h>
 #include <xrpl/protocol/NFTSyntheticSerializer.h>
