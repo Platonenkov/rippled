@@ -122,7 +122,7 @@ DatabaseRotatingImp::sweep()
 std::shared_ptr<NodeObject>
 DatabaseRotatingImp::fetchNodeObject(
     uint256 const& hash,
-    std::uint32_t,
+    std::uint32_t ledgerSeq,
     FetchReport& fetchReport,
     bool duplicate)
 {
@@ -171,14 +171,26 @@ DatabaseRotatingImp::fetchNodeObject(
         nodeObject = fetch(archive);
         if (nodeObject)
         {
+            // Update writable backend with data from the archive backend.
+            // While a rotation is in flight, ordinary (duplicate == false)
+            // reads served by the archive are copied forward too: the
+            // archive is about to be deleted, and a body canonicalized
+            // into the cache after the freshen getKeys() snapshot would
+            // otherwise survive only in RAM once the archive is dropped.
+            if (duplicate || rotationInFlight_.load(std::memory_order_acquire))
             {
-                // Refresh the writable backend pointer
-                std::scoped_lock const lock(mutex_);
-                writable = writableBackend_;
-            }
+                {
+                    // Refresh the writable backend pointer
+                    std::scoped_lock const lock(mutex_);
+                    writable = writableBackend_;
+                }
 
-            // Update writable backend with data from the archive backend
-            if (duplicate)
+                if (!duplicate)
+                {
+                    JLOG(j_.warn()) << "Rotating: copy node for ledger " << ledgerSeq
+                                    << " from archive to writable backend: " << hash;
+                    ++copyForwardCount_;
+                }
                 writable->store(nodeObject);
         }
     }
