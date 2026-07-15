@@ -208,7 +208,7 @@ DatabaseRotatingImp::fetchNodeObject(
                 {
                     JLOG(j_.warn()) << "Rotating: copy node for ledger " << ledgerSeq
                                     << " from archive to writable backend: " << hash;
-                    ++copyForwardCount_;
+                    copyForwardCount_.fetch_add(1, std::memory_order_relaxed);
                 }
                 writable->store(nodeObject);
             }
