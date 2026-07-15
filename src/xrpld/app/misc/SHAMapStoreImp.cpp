@@ -21,6 +21,7 @@
 #include <xrpl/nodestore/Scheduler.h>
 #include <xrpl/nodestore/detail/DatabaseRotatingImp.h>
 #include <xrpl/protocol/Protocol.h>
+#include <xrpl/protocol/Serializer.h>
 #include <xrpl/server/NetworkOPs.h>
 #include <xrpl/server/State.h>
 #include <xrpl/shamap/SHAMapMissingNode.h>
@@ -265,10 +266,11 @@ bool
 SHAMapStoreImp::copyNode(std::uint64_t& nodeCount, SHAMapTreeNode const& node)
 {
     // Copy a single record from node to dbRotating_
-    dbRotating_->fetchNodeObject(
+    auto obj = dbRotating_->fetchNodeObject(
         node.getHash().asUInt256(), 0, NodeStore::FetchType::Synchronous, true);
     if (!obj)
     {
+        XRPL_ASSERT(node.cowid() == 0, "SHAMapStoreImp::copyNode : rescued node must be clean");
         // Reachable from the validated state map in memory, but present in
         // neither backend: its only on-disk copy lived in a backend removed by
         // an earlier rotation, and it was never rewritten because it is clean
@@ -390,6 +392,23 @@ SHAMapStoreImp::run()
             // Only log if we completed without a "health" abort
             JLOG(journal_.debug())
                 << "copied ledger " << validatedSeq << " nodecount " << nodeCount;
+
+            // Close the getKeys()->swap exposure window: from here until
+            // rotate() completes, an ordinary read served by the archive is
+            // copied forward into the writable backend, so a node fetched
+            // from the doomed archive cannot be left RAM-only when the
+            // archive is deleted. RAII so the early returns below (and any
+            // exception) also clear the flag.
+            struct RotationExposureGuard
+            {
+                NodeStore::DatabaseRotating& db;
+                ~RotationExposureGuard()
+                {
+                    db.setRotationInFlight(false);
+                }
+            };
+            RotationExposureGuard const rotationExposureGuard{*dbRotating_};
+            dbRotating_->setRotationInFlight(true);
 
             JLOG(journal_.debug()) << "freshening caches";
             freshenCaches();
