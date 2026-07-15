@@ -623,10 +623,11 @@ TaggedCache<Key, T, IsKeyCache, SharedWeakUnionPointer, SharedPointerType, Hash,
             // Allocate the current size plus a little extra, in case the cache grows while
             // allocating. Each time another allocation is needed, the extra also gets bigger until
             // it ultimately doubles the size + 1.
-            constexpr std::size_t baseShift = 5;
+            constexpr std::size_t baseShift = 63;
             auto const bufferOffset = std::min(allocationIterations, std::size_t{baseShift});
             auto const bufferShift = baseShift - bufferOffset;
-            size += (size >> bufferShift) + 1;
+            auto const buffer = (size >> bufferShift) + 1;
+            size += buffer;
             v.reserve(size);
             ++allocationIterations;
         }
