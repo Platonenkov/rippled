@@ -404,11 +404,11 @@ SHAMapStoreImp::run()
                 NodeStore::DatabaseRotating& db;
                 ~RotationExposureGuard()
                 {
-                    db.setRotationInFlight(false);
+                    db.setRotationInFlight(0);
                 }
             };
             RotationExposureGuard const rotationExposureGuard{*dbRotating_};
-            dbRotating_->setRotationInFlight(true);
+            dbRotating_->setRotationInFlight(lastRotated);
 
             JLOG(journal_.debug()) << "freshening caches";
             freshenCaches();
